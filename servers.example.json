@@ -1,0 +1,24 @@
+{
+  "servers": {
+    "satisfactory": {
+      "label": "Satisfactory Server",
+      "region": "ap-northeast-1",
+      "instanceType": "t3.xlarge",
+      "amiPrefix": "satisfactory-",
+      "description": "Satisfactory Dedicated Server",
+      "allowedGuilds": [],
+      "sshUser": "ubuntu",
+      "stopCommand": "sudo systemctl stop satisfactory",
+      "startCommand": "sudo systemctl start satisfactory",
+      "securityGroupPorts": [7777, 15000, 15777],
+      "rootVolumeSize": 30,
+      "downloadableFiles": {
+        "save": {
+          "path": "/home/steam/SatisfactoryDedicatedServer/FactoryGame/Saved/SaveGames/木曜日",
+          "description": "セーブデータ",
+          "type": "directory"
+        }
+      }
+    }
+  }
+}
