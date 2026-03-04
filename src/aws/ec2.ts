@@ -13,6 +13,7 @@ import {
   AuthorizeSecurityGroupIngressCommand,
   RevokeSecurityGroupIngressCommand,
   DescribeVpcsCommand,
+  DescribeInstanceTypesCommand,
   waitUntilInstanceRunning,
   waitUntilInstanceStatusOk,
   waitUntilImageAvailable,
@@ -454,4 +455,35 @@ async function getBotPublicIp(): Promise<string> {
   }
 
   throw new Error("ボットのパブリック IP を取得できませんでした");
+}
+
+// --- Instance type info ---
+
+export interface InstanceTypeInfo {
+  vcpus: number;
+  memoryGiB: number;
+  architecture: string;
+}
+
+export async function getInstanceTypeInfo(
+  region: string,
+  instanceType: string
+): Promise<InstanceTypeInfo | null> {
+  const client = getClient(region);
+  try {
+    const result = await client.send(
+      new DescribeInstanceTypesCommand({
+        InstanceTypes: [instanceType as any],
+      })
+    );
+    const info = result.InstanceTypes?.[0];
+    if (!info) return null;
+    return {
+      vcpus: info.VCpuInfo?.DefaultVCpus || 0,
+      memoryGiB: Math.round((info.MemoryInfo?.SizeInMiB || 0) / 1024),
+      architecture: info.ProcessorInfo?.SupportedArchitectures?.[0] || "x86_64",
+    };
+  } catch {
+    return null;
+  }
 }

@@ -28,6 +28,7 @@ import {
   terminateInstance,
   waitForInstanceReady,
   ensureSecurityGroup,
+  getInstanceTypeInfo,
 } from "../../aws/ec2.js";
 
 const COLORS = {
@@ -268,6 +269,11 @@ async function handleStart(
       await executeCommand(sshOptions, config.startCommand);
     }
 
+    const specs = await getInstanceTypeInfo(config.region, config.instanceType);
+    const specsText = specs
+      ? `${specs.vcpus} vCPU / ${specs.memoryGiB} GB RAM`
+      : config.instanceType;
+
     const embed = new EmbedBuilder()
       .setColor(COLORS.SUCCESS)
       .setTitle(`${config.label} 起動完了`)
@@ -275,8 +281,8 @@ async function handleStart(
         { name: "IP アドレス", value: `\`${readyInstance.publicIp}\``, inline: true },
         { name: "状態", value: "稼働中", inline: true },
         { name: "リージョン", value: formatRegion(config.region), inline: true },
-        { name: "インスタンスタイプ", value: config.instanceType, inline: true },
-        { name: "ストレージ", value: config.rootVolumeSize ? `${config.rootVolumeSize} GB` : "-", inline: true },
+        { name: "スペック", value: `${config.instanceType}\n${specsText}`, inline: true },
+        { name: "ストレージ", value: config.rootVolumeSize ? `${config.rootVolumeSize} GB (gp3)` : "-", inline: true },
         { name: "モード", value: config.spot ? "スポット" : "オンデマンド", inline: true }
       )
       .setTimestamp();
