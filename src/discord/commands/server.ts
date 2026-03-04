@@ -274,7 +274,10 @@ async function handleStart(
       .addFields(
         { name: "IP アドレス", value: `\`${readyInstance.publicIp}\``, inline: true },
         { name: "状態", value: "稼働中", inline: true },
-        { name: "リージョン", value: formatRegion(config.region), inline: true }
+        { name: "リージョン", value: formatRegion(config.region), inline: true },
+        { name: "インスタンスタイプ", value: config.instanceType, inline: true },
+        { name: "ストレージ", value: config.rootVolumeSize ? `${config.rootVolumeSize} GB` : "-", inline: true },
+        { name: "モード", value: config.spot ? "スポット" : "オンデマンド", inline: true }
       )
       .setTimestamp();
 
