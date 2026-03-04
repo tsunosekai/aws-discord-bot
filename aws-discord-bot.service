@@ -10,6 +10,7 @@ ExecStart=/home/tsuno/.nvm/versions/node/v18.17.1/bin/node /home/tsuno/aws-disco
 Restart=on-failure
 RestartSec=10
 Environment=NODE_ENV=production
+Environment=NODE_TLS_REJECT_UNAUTHORIZED=0
 
 [Install]
 WantedBy=multi-user.target

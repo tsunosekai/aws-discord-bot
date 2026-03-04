@@ -26,6 +26,8 @@ export interface ServerConfig {
   rootVolumeSize?: number;
   spot?: boolean;
   keyPairName?: string;
+  postStartHook?: string;
+  hookConfig?: Record<string, unknown>;
 }
 
 export interface ServersConfig {

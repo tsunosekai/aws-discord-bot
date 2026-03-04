@@ -30,6 +30,7 @@ import {
   ensureSecurityGroup,
   getInstanceTypeInfo,
 } from "../../aws/ec2.js";
+import { runPostStartHook } from "../../post-start-hooks/index.js";
 
 const COLORS = {
   SUCCESS: 0x00ff00,
@@ -267,6 +268,31 @@ async function handleStart(
     if (config.sshUser && config.startCommand) {
       const sshOptions = { host: readyInstance.publicIp, user: config.sshUser };
       await executeCommand(sshOptions, config.startCommand);
+    }
+
+    // 起動後フックの実行
+    if (config.postStartHook) {
+      if (canSend) {
+        await channel.send(`起動後セットアップを実行中... (${config.postStartHook})`);
+      }
+      try {
+        await runPostStartHook(
+          config.postStartHook,
+          readyInstance.publicIp,
+          config.label,
+          config.hookConfig || {}
+        );
+        if (canSend) {
+          await channel.send(`起動後セットアップが完了しました。`);
+        }
+      } catch (error) {
+        console.error("Error in post-start hook:", error);
+        if (canSend) {
+          await channel.send(
+            `⚠️ 起動後セットアップに失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは起動していますが、手動でセットアップが必要かもしれません。`
+          );
+        }
+      }
     }
 
     const specs = await getInstanceTypeInfo(config.region, config.instanceType);

@@ -10,11 +10,15 @@
       "sshUser": "ubuntu",
       "stopCommand": "sudo systemctl stop satisfactory",
       "startCommand": "sudo systemctl start satisfactory",
-      "securityGroupPorts": [7777, 15000, 15777],
+      "securityGroupPorts": [7777, 8888],
       "rootVolumeSize": 30,
+      "postStartHook": "satisfactory",
+      "hookConfig": {
+        "adminPassword": "admin"
+      },
       "downloadableFiles": {
         "save": {
-          "path": "/home/steam/.config/Epic/FactoryGame/Saved/SaveGames",
+          "path": "/home/steam/.config/Epic/FactoryGame/Saved/SaveGames/server",
           "description": "セーブデータ",
           "type": "directory"
         }
