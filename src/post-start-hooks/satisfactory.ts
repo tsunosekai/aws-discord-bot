@@ -108,15 +108,21 @@ export async function postStartHook(
 
   const sessions = (sessionsRes as any)?.data?.sessions as Array<Record<string, unknown>> | undefined;
 
-  // セッションからセーブ名を探す（saveName, sessionName 等の候補を試す）
+  // セッションの saveHeaders から最新セーブ名を取得
   let saveName: string | undefined;
   if (sessions && sessions.length > 0) {
     const latest = sessions[0];
-    saveName = (latest.saveName as string)
-      || (latest.sessionName as string)
-      || (latest.SaveName as string)
-      || (latest.name as string);
     console.log("Latest session:", JSON.stringify(latest, null, 2));
+
+    // saveHeaders 配列の先頭からセーブ名を取得
+    const saveHeaders = (latest.saveHeaders as Array<Record<string, unknown>>) || [];
+    if (saveHeaders.length > 0) {
+      saveName = (saveHeaders[0].saveName as string) || (saveHeaders[0].SaveName as string);
+    }
+    // saveHeaders がない場合のフォールバック
+    if (!saveName) {
+      saveName = (latest.saveName as string) || (latest.SaveName as string);
+    }
     console.log("Resolved saveName:", saveName);
   }
 
