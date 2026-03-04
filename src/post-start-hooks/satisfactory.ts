@@ -92,29 +92,54 @@ export async function postStartHook(
     // PasswordlessLogin のトークンがまだ有効ならそのまま使う
   }
 
-  // 4. EnumerateSessions でセッション一覧取得
-  const sessionsRes = await apiCall(baseUrl, "EnumerateSessions", {}, token);
-  const sessions = (sessionsRes as { data?: { sessions?: Array<{ saveName: string }> } }).data?.sessions;
+  // 4. QueryServerState で現在の状態を確認
+  const currentState = await apiCall(baseUrl, "QueryServerState", {}, token);
+  console.log("QueryServerState:", JSON.stringify(currentState, null, 2));
 
-  if (!sessions || sessions.length === 0) {
-    console.log("No sessions found, skipping LoadGame");
+  const gameState = (currentState as any)?.data?.serverGameState;
+  if (gameState?.isGameRunning) {
+    console.log("Game is already running, no need to load");
     return;
   }
 
-  // 最新セッションのセーブ名を取得
-  const latestSession = sessions[0];
-  const saveName = latestSession.saveName;
+  // 5. EnumerateSessions でセッション一覧取得
+  const sessionsRes = await apiCall(baseUrl, "EnumerateSessions", {}, token);
+  console.log("EnumerateSessions:", JSON.stringify(sessionsRes, null, 2));
+
+  const sessions = (sessionsRes as any)?.data?.sessions as Array<Record<string, unknown>> | undefined;
+
+  // セッションからセーブ名を探す（saveName, sessionName 等の候補を試す）
+  let saveName: string | undefined;
+  if (sessions && sessions.length > 0) {
+    const latest = sessions[0];
+    saveName = (latest.saveName as string)
+      || (latest.sessionName as string)
+      || (latest.SaveName as string)
+      || (latest.name as string);
+    console.log("Latest session:", JSON.stringify(latest, null, 2));
+    console.log("Resolved saveName:", saveName);
+  }
 
   if (!saveName) {
-    console.log("No save name in latest session, skipping LoadGame");
-    return;
+    // セッションが無い or saveName が解決できない場合は新規ゲーム作成
+    console.log("No save found, creating new game");
+    try {
+      await apiCall(baseUrl, "CreateNewGame", {
+        NewGameData: {
+          SessionName: serverLabel,
+        },
+      }, token);
+    } catch (e) {
+      console.log("CreateNewGame failed (may need manual setup):", e);
+    }
+  } else {
+    // 6. セーブを LoadGame でロード
+    console.log("Loading save:", saveName);
+    await apiCall(baseUrl, "LoadGame", {
+      SaveName: saveName,
+      EnableAdvancedGameSettings: true,
+    }, token);
   }
-
-  // 5. 最新セーブを LoadGame でロード
-  await apiCall(baseUrl, "LoadGame", {
-    SaveName: saveName,
-    EnableAdvancedGameSettings: true,
-  }, token);
 
   // 6. ロード完了を QueryServerState で確認
   for (let i = 0; i < 30; i++) {
