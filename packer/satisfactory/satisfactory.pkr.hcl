@@ -4,10 +4,6 @@ packer {
       version = ">= 1.2.0"
       source  = "github.com/hashicorp/amazon"
     }
-    ansible = {
-      version = ">= 1.1.0"
-      source  = "github.com/hashicorp/ansible"
-    }
   }
 }
 
@@ -38,24 +34,35 @@ source "amazon-ebs" "satisfactory" {
 
   ssh_username = "ubuntu"
 
+  aws_polling {
+    delay_seconds = 30
+    max_attempts  = 60
+  }
+
+  launch_block_device_mappings {
+    device_name           = "/dev/sda1"
+    volume_size           = 30
+    volume_type           = "gp3"
+    delete_on_termination = true
+  }
+
   tags = {
-    Name                 = "satisfactory-{{timestamp}}"
-    discord-bot-managed  = "true"
-    packer               = "true"
+    Name                = "satisfactory-{{timestamp}}"
+    discord-bot-managed = "true"
+    packer              = "true"
   }
 
   snapshot_tags = {
-    Name                 = "satisfactory-{{timestamp}}"
-    discord-bot-managed  = "true"
-    packer               = "true"
+    Name                = "satisfactory-{{timestamp}}"
+    discord-bot-managed = "true"
+    packer              = "true"
   }
 }
 
 build {
   sources = ["source.amazon-ebs.satisfactory"]
 
-  provisioner "ansible" {
-    playbook_file = "ansible/playbook.yml"
-    user          = "ubuntu"
+  provisioner "shell" {
+    script = "./provision.sh"
   }
 }

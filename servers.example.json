@@ -14,7 +14,7 @@
       "rootVolumeSize": 30,
       "downloadableFiles": {
         "save": {
-          "path": "/home/steam/SatisfactoryDedicatedServer/FactoryGame/Saved/SaveGames/木曜日",
+          "path": "/home/steam/.config/Epic/FactoryGame/Saved/SaveGames",
           "description": "セーブデータ",
           "type": "directory"
         }

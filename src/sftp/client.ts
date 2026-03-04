@@ -180,7 +180,7 @@ export async function uploadDirectoryFromZip(
   try {
     await executeCommand(
       options,
-      `mkdir -p "${remotePath}" && cd "${remotePath}" && unzip -o "${tempZipPath}"`
+      `sudo bash -c 'mkdir -p "${remotePath}" && cd "${remotePath}" && unzip -o "${tempZipPath}" && chown -R steam:steam "${remotePath}"'`
     );
   } finally {
     await executeCommand(options, `rm -f "${tempZipPath}"`).catch(() => {});
@@ -197,7 +197,7 @@ export async function downloadDirectoryAsZip(
 
   await executeCommand(
     options,
-    `cd "${remotePath}" && zip -r "${tempZipPath}" .`
+    `sudo bash -c 'cd "${remotePath}" && zip -r "${tempZipPath}" .'`
   );
 
   try {
