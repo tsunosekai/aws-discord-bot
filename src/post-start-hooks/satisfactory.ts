@@ -13,7 +13,7 @@ async function apiCall(
   authToken?: string
 ): Promise<Record<string, unknown>> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    "Content-Type": "application/json; charset=utf-8",
   };
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
@@ -59,28 +59,34 @@ export async function postStartHook(
   // 1. API の応答を待つ
   await waitForApi(baseUrl);
 
-  // 2. PasswordlessLogin (InitialAdmin) でトークン取得
-  const loginRes = await apiCall(baseUrl, "PasswordlessLogin", {
-    MinimumPrivilegeLevel: "InitialAdmin",
-  });
-  const authToken = (loginRes as { data?: { authenticationToken?: string } }).data?.authenticationToken;
-  if (!authToken) {
-    throw new Error("Failed to obtain auth token from PasswordlessLogin");
-  }
+  // 2. ログイン: まず PasswordlessLogin を試し、失敗したら PasswordLogin を使う
+  let token: string | undefined;
 
-  // 3. ClaimServer でサーバークレーム
   try {
-    await apiCall(baseUrl, "ClaimServer", {
-      ServerName: serverLabel,
-      AdminPassword: adminPassword,
-    }, authToken);
-  } catch (e) {
-    // サーバーが既にクレーム済みの場合はエラーを無視
-    console.log("ClaimServer result (may already be claimed):", e);
+    const loginRes = await apiCall(baseUrl, "PasswordlessLogin", {
+      MinimumPrivilegeLevel: "InitialAdmin",
+    });
+    token = (loginRes as { data?: { authenticationToken?: string } }).data?.authenticationToken;
+  } catch {
+    console.log("PasswordlessLogin failed (server likely already claimed), trying PasswordLogin");
   }
 
-  // 既にクレーム済みの場合は AdminPassword でログインし直す
-  let token = authToken;
+  if (token) {
+    // 3. 未クレームサーバーの場合: ClaimServer でサーバークレーム
+    try {
+      const claimRes = await apiCall(baseUrl, "ClaimServer", {
+        ServerName: serverLabel,
+        AdminPassword: adminPassword,
+      }, token);
+      const claimToken = (claimRes as { data?: { authenticationToken?: string } }).data?.authenticationToken;
+      if (claimToken) token = claimToken;
+      console.log("Server claimed successfully");
+    } catch (e) {
+      console.log("ClaimServer failed (may already be claimed):", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // クレーム済みサーバーまたはクレーム後: AdminPassword でログイン
   try {
     const relogin = await apiCall(baseUrl, "PasswordLogin", {
       MinimumPrivilegeLevel: "Administrator",
@@ -88,8 +94,12 @@ export async function postStartHook(
     });
     const newToken = (relogin as { data?: { authenticationToken?: string } }).data?.authenticationToken;
     if (newToken) token = newToken;
-  } catch {
-    // PasswordlessLogin のトークンがまだ有効ならそのまま使う
+  } catch (e) {
+    console.log("PasswordLogin failed:", e instanceof Error ? e.message : e);
+  }
+
+  if (!token) {
+    throw new Error("Failed to obtain auth token via any login method");
   }
 
   // 4. QueryServerState で現在の状態を確認
@@ -148,12 +158,17 @@ export async function postStartHook(
   }
 
   // 6. ロード完了を QueryServerState で確認
-  for (let i = 0; i < 30; i++) {
-    const stateRes = await apiCall(baseUrl, "QueryServerState", {}, token);
-    const serverState = (stateRes as { data?: { serverGameState?: { isGameRunning?: boolean } } }).data?.serverGameState;
-    if (serverState?.isGameRunning) {
-      console.log("Satisfactory server is running and game is loaded");
-      return;
+  // LoadGame 後、API は一時的に利用不可になるためエラーを無視してリトライする
+  for (let i = 0; i < 60; i++) {
+    try {
+      const stateRes = await apiCall(baseUrl, "QueryServerState", {}, token);
+      const serverState = (stateRes as { data?: { serverGameState?: { isGameRunning?: boolean } } }).data?.serverGameState;
+      if (serverState?.isGameRunning) {
+        console.log("Satisfactory server is running and game is loaded");
+        return;
+      }
+    } catch (e) {
+      console.log(`QueryServerState attempt ${i + 1}/60 failed (API temporarily unavailable during load):`, e instanceof Error ? e.message : e);
     }
     await new Promise((r) => setTimeout(r, 5000));
   }

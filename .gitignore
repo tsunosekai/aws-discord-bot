@@ -4,3 +4,4 @@ dist/
 servers.json
 *.log
 downloads/
+*.zip

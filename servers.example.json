@@ -23,6 +23,46 @@
           "type": "directory"
         }
       }
+    },
+    "minecraft-java": {
+      "label": "Minecraft Java",
+      "region": "ap-northeast-1",
+      "instanceType": "t3.medium",
+      "amiPrefix": "minecraft-java-",
+      "description": "Minecraft Java Edition Server",
+      "allowedGuilds": [],
+      "sshUser": "ubuntu",
+      "stopCommand": "sudo systemctl stop minecraft",
+      "startCommand": "sudo systemctl start minecraft",
+      "securityGroupPorts": [25565],
+      "rootVolumeSize": 10,
+      "downloadableFiles": {
+        "world": {
+          "path": "/home/minecraft/server/world",
+          "description": "ワールドデータ",
+          "type": "directory"
+        }
+      }
+    },
+    "minecraft-bedrock": {
+      "label": "Minecraft 統合版",
+      "region": "ap-northeast-1",
+      "instanceType": "t3.medium",
+      "amiPrefix": "minecraft-bedrock-",
+      "description": "Minecraft Bedrock Edition Server",
+      "allowedGuilds": [],
+      "sshUser": "ubuntu",
+      "stopCommand": "sudo systemctl stop minecraft",
+      "startCommand": "sudo systemctl start minecraft",
+      "securityGroupPorts": [19132, 19133],
+      "rootVolumeSize": 10,
+      "downloadableFiles": {
+        "world": {
+          "path": "/home/minecraft/server/worlds",
+          "description": "ワールドデータ",
+          "type": "directory"
+        }
+      }
     }
   }
 }
