@@ -22,7 +22,7 @@ sudo apt-get update -y
 
 echo ">>> Installing required packages..."
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  curl unzip libcurl4 openssl
+  curl unzip zip libcurl4 openssl
 
 # --- Minecraft user ---
 echo ">>> Creating minecraft user..."

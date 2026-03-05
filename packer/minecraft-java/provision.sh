@@ -22,7 +22,7 @@ sudo apt-get update -y
 
 echo ">>> Installing required packages..."
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  openjdk-21-jre-headless curl jq screen
+  openjdk-21-jre-headless curl jq screen zip
 
 # --- Minecraft user ---
 echo ">>> Creating minecraft user..."

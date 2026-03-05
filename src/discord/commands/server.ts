@@ -144,11 +144,19 @@ export async function autocomplete(
   const focusedValue = interaction.options.getFocused();
   const guildId = interaction.guildId || "";
   const serverNames = getServerNamesForGuild(guildId);
-  const filtered = serverNames.filter((name) =>
-    name.toLowerCase().includes(focusedValue.toLowerCase())
-  );
+  const config = loadServersConfig();
+  const filtered = serverNames.filter((name) => {
+    const label = config.servers[name]?.label || name;
+    return (
+      name.toLowerCase().includes(focusedValue.toLowerCase()) ||
+      label.toLowerCase().includes(focusedValue.toLowerCase())
+    );
+  });
   await interaction.respond(
-    filtered.slice(0, 25).map((name) => ({ name, value: name }))
+    filtered.slice(0, 25).map((name) => ({
+      name: config.servers[name]?.label || name,
+      value: name,
+    }))
   );
 }
 
@@ -247,34 +255,26 @@ async function handleStart(
       spot: config.spot,
     });
 
-    await interaction.editReply(
-      `インスタンスを作成しました。サーバーの準備完了を待機中...`
-    );
-
-    const channel = interaction.channel;
-    const canSend = channel && "send" in channel;
+    await interaction.editReply(`サーバーの準備完了を待機中...`);
 
     const readyInstance = await waitForInstanceReady(config.region, instance.instanceId);
 
     // セーブデータをアップロード
     if (config.sshUser && config.downloadableFiles) {
-      if (canSend) {
-        await channel.send(`セーブデータをアップロード中...`);
-      }
+      await interaction.editReply(`セーブデータをアップロード中...`);
       await uploadSaveDataToServer(serverName, config, readyInstance.publicIp);
     }
 
     // ゲームサービスを起動
     if (config.sshUser && config.startCommand) {
+      await interaction.editReply(`サーバーを起動中...`);
       const sshOptions = { host: readyInstance.publicIp, user: config.sshUser };
       await executeCommand(sshOptions, config.startCommand);
     }
 
     // 起動後フックの実行
     if (config.postStartHook) {
-      if (canSend) {
-        await channel.send(`起動後セットアップを実行中... (${config.postStartHook})`);
-      }
+      await interaction.editReply(`起動後セットアップを実行中...`);
       try {
         await runPostStartHook(
           config.postStartHook,
@@ -282,16 +282,11 @@ async function handleStart(
           config.label,
           config.hookConfig || {}
         );
-        if (canSend) {
-          await channel.send(`起動後セットアップが完了しました。`);
-        }
       } catch (error) {
         console.error("Error in post-start hook:", error);
-        if (canSend) {
-          await channel.send(
-            `⚠️ 起動後セットアップに失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは起動していますが、手動でセットアップが必要かもしれません。`
-          );
-        }
+        await interaction.editReply(
+          `⚠️ 起動後セットアップに失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは起動していますが、手動でセットアップが必要かもしれません。`
+        );
       }
     }
 
@@ -313,18 +308,12 @@ async function handleStart(
       )
       .setTimestamp();
 
-    if (canSend) {
-      await channel.send({ embeds: [embed] });
-    }
+    await interaction.editReply({ content: "", embeds: [embed] });
   } catch (error) {
     console.error("Error starting server:", error);
-    const channel = interaction.channel;
-    const canSend = channel && "send" in channel;
-    if (canSend) {
-      await channel.send(
-        `サーバーの起動に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`
-      );
-    }
+    await interaction.editReply(
+      `サーバーの起動に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`
+    );
   }
 }
 
@@ -455,9 +444,6 @@ async function handleStop(
       ? downloadedFiles.map((f) => `**${f.description}**: ${f.url}`).join("\n")
       : null;
 
-    const channel = interaction.channel;
-    const canSend = channel && "send" in channel;
-
     const embed = new EmbedBuilder()
       .setColor(COLORS.WARNING)
       .setTitle(`${config.label} 停止完了`)
@@ -467,18 +453,12 @@ async function handleStop(
       )
       .setTimestamp();
 
-    if (canSend) {
-      await channel.send({ embeds: [embed] });
-    }
+    await interaction.editReply({ content: "", embeds: [embed] });
   } catch (error) {
     console.error("Error stopping server:", error);
-    const channel = interaction.channel;
-    const canSend = channel && "send" in channel;
-    if (canSend) {
-      await channel.send(
-        `⚠️ サーバーの停止に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは削除されていません。手動で確認してください。`
-      );
-    }
+    await interaction.editReply(
+      `⚠️ サーバーの停止に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは削除されていません。手動で確認してください。`
+    );
   }
 }
 

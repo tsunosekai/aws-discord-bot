@@ -31,6 +31,7 @@ export interface ServerConfig {
 }
 
 export interface ServersConfig {
+  adminGuilds?: string[];
   servers: Record<string, ServerConfig>;
 }
 
@@ -56,8 +57,16 @@ export function getServerConfig(name: string): ServerConfig | undefined {
   return config.servers[name];
 }
 
+function isAdminGuild(guildId: string): boolean {
+  const config = loadServersConfig();
+  return config.adminGuilds?.includes(guildId) ?? false;
+}
+
 export function getServerNamesForGuild(guildId: string): string[] {
   const config = loadServersConfig();
+  if (isAdminGuild(guildId)) {
+    return Object.keys(config.servers);
+  }
   return Object.entries(config.servers)
     .filter(([_, serverConfig]) => {
       if (!serverConfig.allowedGuilds || serverConfig.allowedGuilds.length === 0) {
@@ -69,6 +78,7 @@ export function getServerNamesForGuild(guildId: string): string[] {
 }
 
 export function isServerAllowedForGuild(serverName: string, guildId: string): boolean {
+  if (isAdminGuild(guildId)) return true;
   const config = getServerConfig(serverName);
   if (!config) return false;
   if (!config.allowedGuilds || config.allowedGuilds.length === 0) {
