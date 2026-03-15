@@ -60,6 +60,7 @@ export async function executeCommand(
       port: 22,
       username: user,
       privateKey: readFileSync(keyPath),
+      readyTimeout: 30000,
     });
   });
 }
@@ -117,6 +118,7 @@ export async function downloadFile(
       port: 22,
       username: user,
       privateKey: readFileSync(keyPath),
+      readyTimeout: 30000,
     });
   });
 }
@@ -163,6 +165,7 @@ export async function uploadFile(
       port: 22,
       username: user,
       privateKey: readFileSync(keyPath),
+      readyTimeout: 30000,
     });
   });
 }
@@ -178,9 +181,10 @@ export async function uploadDirectoryFromZip(
   await uploadFile(options, localPath, tempZipPath);
 
   try {
+    // 既存ディレクトリのオーナーを維持、なければ親ディレクトリのオーナーを使用
     await executeCommand(
       options,
-      `sudo bash -c 'mkdir -p "${remotePath}" && cd "${remotePath}" && unzip -o "${tempZipPath}" && chown -R steam:steam "${remotePath}"'`
+      `sudo bash -c 'OWNER=$(stat -c "%U:%G" "${remotePath}" 2>/dev/null || stat -c "%U:%G" "$(dirname "${remotePath}")"); mkdir -p "${remotePath}" && cd "${remotePath}" && unzip -o "${tempZipPath}" && chown -R "$OWNER" "${remotePath}"'`
     );
   } finally {
     await executeCommand(options, `rm -f "${tempZipPath}"`).catch(() => {});

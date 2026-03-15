@@ -40,8 +40,9 @@ async function checkAndNotify(client: Client): Promise<void> {
   if (!reminderTime || !reminderChannelId) return;
 
   const now = new Date();
-  const currentTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-  const today = now.toDateString();
+  const jst = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Tokyo" }));
+  const currentTime = `${jst.getHours().toString().padStart(2, "0")}:${jst.getMinutes().toString().padStart(2, "0")}`;
+  const today = jst.toDateString();
 
   if (currentTime !== reminderTime || lastCheckedDate === today) {
     return;

@@ -112,13 +112,12 @@ MaxInternetClientRate=104857600
 Port=7777
 ENGINEEOF
 
-# --- System tuning ---
-echo ">>> Configuring file descriptor limits..."
-sudo tee /etc/security/limits.d/satisfactory.conf > /dev/null << 'LIMITSEOF'
-steam soft nofile 65536
-steam hard nofile 65536
-LIMITSEOF
+# --- Create save data directory ---
+echo ">>> Creating save data directory..."
+SAVE_DIR="${STEAM_HOME}/.config/Epic/FactoryGame/Saved/SaveGames/server"
+sudo -u "${STEAM_USER}" mkdir -p "${SAVE_DIR}"
 
+# --- System tuning ---
 echo ">>> Configuring kernel parameters for network performance..."
 sudo tee /etc/sysctl.d/99-game-server.conf > /dev/null << 'SYSCTLEOF'
 # UDP buffer sizes (Satisfactory uses UDP only)

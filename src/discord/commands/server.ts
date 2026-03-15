@@ -428,15 +428,16 @@ async function handleStop(
   let downloadedFiles: { name: string; url: string; description: string }[] = [];
 
   try {
+    // ゲームサービスを停止（セーブデータ保護のため常に実行）
+    if (config.sshUser && config.stopCommand) {
+      await interaction.editReply(`サービスを停止中...`);
+      const sshOptions = { host: instance.publicIp, user: config.sshUser };
+      await executeCommand(sshOptions, config.stopCommand);
+    }
+
+    // セーブデータをダウンロード
     const hasDownloadConfig = config.sshUser && config.downloadableFiles && Object.keys(config.downloadableFiles).length > 0;
-
     if (hasDownloadConfig) {
-      if (config.stopCommand) {
-        await interaction.editReply(`サービスを停止中...`);
-        const sshOptions = { host: instance.publicIp, user: config.sshUser! };
-        await executeCommand(sshOptions, config.stopCommand);
-      }
-
       await interaction.editReply(`セーブデータをダウンロード中...`);
       downloadedFiles = await downloadFilesFromServer(serverName, config, instance.publicIp);
     }
@@ -541,9 +542,13 @@ async function handleStatus(
     }
   } catch (error) {
     console.error("Error getting status:", error);
-    await interaction.editReply(
-      `状態の取得に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`
-    );
+    try {
+      await interaction.editReply(
+        `状態の取得に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`
+      );
+    } catch (replyError) {
+      console.error("Failed to send error reply:", replyError);
+    }
   }
 }
 
