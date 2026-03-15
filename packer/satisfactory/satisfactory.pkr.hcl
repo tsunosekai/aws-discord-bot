@@ -14,7 +14,7 @@ variable "region" {
 
 variable "instance_type" {
   type    = string
-  default = "t3.large"
+  default = "c5.xlarge"
 }
 
 source "amazon-ebs" "satisfactory" {

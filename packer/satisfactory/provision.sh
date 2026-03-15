@@ -83,6 +83,34 @@ SERVICEEOF
 sudo systemctl daemon-reload
 sudo systemctl enable satisfactory
 
+# --- Engine.ini (Unreal Engine network tuning for AWS) ---
+echo ">>> Creating Engine.ini for network bandwidth optimization..."
+ENGINE_INI_DIR="${STEAM_HOME}/.config/Epic/FactoryGame/Saved/Config/LinuxServer"
+sudo -u "${STEAM_USER}" mkdir -p "${ENGINE_INI_DIR}"
+sudo -u "${STEAM_USER}" tee "${ENGINE_INI_DIR}/Engine.ini" > /dev/null << 'ENGINEEOF'
+[/Script/Engine.Player]
+ConfiguredInternetSpeed=104857600
+ConfiguredLanSpeed=104857600
+
+[/Script/OnlineSubsystemUtils.IpNetDriver]
+MaxClientRate=104857600
+MaxInternetClientRate=104857600
+InitialConnectTimeout=120.0
+ConnectionTimeout=120.0
+
+[/Script/Engine.Engine]
+bSmoothFrameRate=true
+bUseFixedFrameRate=false
+NetClientTicksPerSecond=120
+
+[/Script/SocketSubsystemEpic.EpicNetDriver]
+MaxClientRate=104857600
+MaxInternetClientRate=104857600
+
+[URL]
+Port=7777
+ENGINEEOF
+
 # --- System tuning ---
 echo ">>> Configuring file descriptor limits..."
 sudo tee /etc/security/limits.d/satisfactory.conf > /dev/null << 'LIMITSEOF'
@@ -90,13 +118,78 @@ steam soft nofile 65536
 steam hard nofile 65536
 LIMITSEOF
 
-echo ">>> Configuring kernel parameters..."
-sudo sysctl -w net.core.rmem_max=16777216
-sudo sysctl -w net.core.wmem_max=16777216
-sudo tee -a /etc/sysctl.conf > /dev/null << 'SYSCTLEOF'
-net.core.rmem_max=16777216
-net.core.wmem_max=16777216
+echo ">>> Configuring kernel parameters for network performance..."
+sudo tee /etc/sysctl.d/99-game-server.conf > /dev/null << 'SYSCTLEOF'
+# UDP/TCP buffer sizes (large buffers reduce packet loss)
+net.core.rmem_max=26214400
+net.core.wmem_max=26214400
+net.core.rmem_default=1048576
+net.core.wmem_default=1048576
+net.ipv4.udp_mem=8388608 12582912 26214400
+net.ipv4.udp_rmem_min=16384
+net.ipv4.udp_wmem_min=16384
+net.ipv4.tcp_rmem=4096 1048576 26214400
+net.ipv4.tcp_wmem=4096 1048576 26214400
+
+# Reduce network latency
+net.ipv4.tcp_low_latency=1
+net.ipv4.tcp_no_metrics_save=1
+net.ipv4.tcp_slow_start_after_idle=0
+net.ipv4.tcp_fastopen=3
+net.ipv4.tcp_mtu_probing=1
+
+# Use BBR congestion control (better for real-time traffic)
+net.core.default_qdisc=fq
+net.ipv4.tcp_congestion_control=bbr
+
+# Increase connection tracking and backlog
+net.core.netdev_max_backlog=5000
+net.core.somaxconn=4096
+net.ipv4.tcp_max_syn_backlog=4096
+
+# Reduce TIME_WAIT sockets
+net.ipv4.tcp_tw_reuse=1
+net.ipv4.tcp_fin_timeout=15
+
+# Increase ARP cache for better network performance
+net.ipv4.neigh.default.gc_thresh1=1024
+net.ipv4.neigh.default.gc_thresh2=2048
+net.ipv4.neigh.default.gc_thresh3=4096
 SYSCTLEOF
+sudo sysctl --system
+
+# --- Network interface tuning (applied on boot) ---
+echo ">>> Creating network tuning service..."
+sudo tee /etc/systemd/system/network-tuning.service > /dev/null << 'NETEOF'
+[Unit]
+Description=Network interface tuning for game server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/tune-network.sh
+
+[Install]
+WantedBy=multi-user.target
+NETEOF
+
+sudo tee /usr/local/bin/tune-network.sh > /dev/null << 'TUNESCRIPT'
+#!/bin/bash
+# Tune the primary network interface for low-latency game traffic
+IFACE=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
+if [ -n "$IFACE" ]; then
+  # Increase ring buffer sizes if supported
+  ethtool -G "$IFACE" rx 4096 tx 4096 2>/dev/null || true
+  # Disable interrupt coalescing for lower latency
+  ethtool -C "$IFACE" adaptive-rx off adaptive-tx off rx-usecs 0 tx-usecs 0 2>/dev/null || true
+  echo "Network tuning applied to $IFACE"
+fi
+TUNESCRIPT
+sudo chmod +x /usr/local/bin/tune-network.sh
+sudo systemctl daemon-reload
+sudo systemctl enable network-tuning
 
 # --- Cleanup ---
 echo ">>> Cleaning up..."
