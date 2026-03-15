@@ -22,7 +22,7 @@ function httpsPost(
         port: parsed.port,
         path: parsed.pathname,
         method: "POST",
-        headers,
+        headers: { ...headers, "Content-Length": Buffer.byteLength(body).toString() },
         rejectUnauthorized: false,
       },
       (res) => {
