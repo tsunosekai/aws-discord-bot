@@ -62,6 +62,13 @@ source "amazon-ebs" "minecraft-bedrock" {
 build {
   sources = ["source.amazon-ebs.minecraft-bedrock"]
 
+  provisioner "shell-local" {
+    inline = [
+      "echo 'Downloading Minecraft Bedrock server locally...'",
+      "curl -L -o bedrock-server.zip 'https://www.minecraft.net/bedrockdedicatedserver/bin-linux/bedrock-server-1.26.3.1.zip'"
+    ]
+  }
+
   provisioner "file" {
     source      = "bedrock-server.zip"
     destination = "/tmp/bedrock-server.zip"
@@ -69,5 +76,9 @@ build {
 
   provisioner "shell" {
     script = "./provision.sh"
+  }
+
+  provisioner "shell-local" {
+    inline = ["rm -f bedrock-server.zip"]
   }
 }
