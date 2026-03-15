@@ -311,9 +311,13 @@ async function handleStart(
     await interaction.editReply({ content: "", embeds: [embed] });
   } catch (error) {
     console.error("Error starting server:", error);
-    await interaction.editReply(
-      `サーバーの起動に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`
-    );
+    try {
+      await interaction.editReply(
+        `サーバーの起動に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}`
+      );
+    } catch (replyError) {
+      console.error("Failed to send error reply:", replyError);
+    }
   }
 }
 
@@ -456,9 +460,13 @@ async function handleStop(
     await interaction.editReply({ content: "", embeds: [embed] });
   } catch (error) {
     console.error("Error stopping server:", error);
-    await interaction.editReply(
-      `⚠️ サーバーの停止に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは削除されていません。手動で確認してください。`
-    );
+    try {
+      await interaction.editReply(
+        `⚠️ サーバーの停止に失敗しました: ${error instanceof Error ? error.message : "不明なエラー"}\nサーバーは削除されていません。手動で確認してください。`
+      );
+    } catch (replyError) {
+      console.error("Failed to send error reply:", replyError);
+    }
   }
 }
 

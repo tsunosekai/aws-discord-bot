@@ -41,14 +41,18 @@ export function createBot(): Client {
         await command.execute(interaction);
       } catch (error) {
         console.error(`Error executing ${interaction.commandName}:`, error);
-        const reply = {
-          content: "コマンドの実行中にエラーが発生しました。",
-          ephemeral: true,
-        };
-        if (interaction.replied || interaction.deferred) {
-          await interaction.followUp(reply);
-        } else {
-          await interaction.reply(reply);
+        try {
+          const reply = {
+            content: "コマンドの実行中にエラーが発生しました。",
+            flags: 64,
+          };
+          if (interaction.replied || interaction.deferred) {
+            await interaction.followUp(reply);
+          } else {
+            await interaction.reply(reply);
+          }
+        } catch (replyError) {
+          console.error("Failed to send error reply:", replyError);
         }
       }
     } else if (interaction.isAutocomplete()) {
