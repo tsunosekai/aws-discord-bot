@@ -26,7 +26,7 @@ echo ">>> Installing required packages..."
 sudo dpkg --add-architecture i386
 sudo apt-get update -y
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y \
-  lib32gcc-s1 lib32stdc++6 unzip zip curl software-properties-common
+  lib32gcc-s1 lib32stdc++6 unzip zip curl software-properties-common ethtool
 
 # --- Steam user ---
 echo ">>> Creating steam user..."
@@ -74,6 +74,8 @@ WorkingDirectory=/home/steam/SatisfactoryDedicatedServer
 ExecStart=/home/steam/SatisfactoryDedicatedServer/FactoryServer.sh -unattended -Port=7777
 Restart=on-failure
 RestartSec=10
+Nice=-5
+LimitNOFILE=65536
 
 [Install]
 WantedBy=multi-user.target
@@ -119,7 +121,7 @@ LIMITSEOF
 
 echo ">>> Configuring kernel parameters for network performance..."
 sudo tee /etc/sysctl.d/99-game-server.conf > /dev/null << 'SYSCTLEOF'
-# UDP/TCP buffer sizes (large buffers reduce packet loss)
+# UDP buffer sizes (Satisfactory uses UDP only)
 net.core.rmem_max=26214400
 net.core.wmem_max=26214400
 net.core.rmem_default=1048576
@@ -127,33 +129,9 @@ net.core.wmem_default=1048576
 net.ipv4.udp_mem=8388608 12582912 26214400
 net.ipv4.udp_rmem_min=16384
 net.ipv4.udp_wmem_min=16384
-net.ipv4.tcp_rmem=4096 1048576 26214400
-net.ipv4.tcp_wmem=4096 1048576 26214400
 
-# Reduce network latency
-net.ipv4.tcp_low_latency=1
-net.ipv4.tcp_no_metrics_save=1
-net.ipv4.tcp_slow_start_after_idle=0
-net.ipv4.tcp_fastopen=3
-net.ipv4.tcp_mtu_probing=1
-
-# Use BBR congestion control (better for real-time traffic)
-net.core.default_qdisc=fq
-net.ipv4.tcp_congestion_control=bbr
-
-# Increase connection tracking and backlog
+# Increase network backlog for burst UDP traffic
 net.core.netdev_max_backlog=5000
-net.core.somaxconn=4096
-net.ipv4.tcp_max_syn_backlog=4096
-
-# Reduce TIME_WAIT sockets
-net.ipv4.tcp_tw_reuse=1
-net.ipv4.tcp_fin_timeout=15
-
-# Increase ARP cache for better network performance
-net.ipv4.neigh.default.gc_thresh1=1024
-net.ipv4.neigh.default.gc_thresh2=2048
-net.ipv4.neigh.default.gc_thresh3=4096
 SYSCTLEOF
 sudo sysctl --system
 

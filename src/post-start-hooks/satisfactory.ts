@@ -1,9 +1,46 @@
 // Satisfactory Dedicated Server 起動後フック
 // サーバークレーム → セーブデータロードを自動実行する
 
+import https from "node:https";
+
 export interface SatisfactoryHookConfig {
   adminPassword?: string;
   apiPort?: number;
+}
+
+// Satisfactory API は自己署名証明書を使用するため検証を無効化
+function httpsPost(
+  url: string,
+  headers: Record<string, string>,
+  body: string
+): Promise<{ status: number; body: string; contentType: string }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const req = https.request(
+      {
+        hostname: parsed.hostname,
+        port: parsed.port,
+        path: parsed.pathname,
+        method: "POST",
+        headers,
+        rejectUnauthorized: false,
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c) => chunks.push(c));
+        res.on("end", () =>
+          resolve({
+            status: res.statusCode || 0,
+            body: Buffer.concat(chunks).toString(),
+            contentType: res.headers["content-type"] || "",
+          })
+        );
+      }
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
 }
 
 async function apiCall(
@@ -18,18 +55,16 @@ async function apiCall(
   if (authToken) {
     headers["Authorization"] = `Bearer ${authToken}`;
   }
-  const res = await fetch(baseUrl, {
-    method: "POST",
+  const res = await httpsPost(
+    baseUrl,
     headers,
-    body: JSON.stringify({ function: functionName, data: body }),
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Satisfactory API ${functionName} failed (${res.status}): ${text}`);
+    JSON.stringify({ function: functionName, data: body })
+  );
+  if (res.status < 200 || res.status >= 300) {
+    throw new Error(`Satisfactory API ${functionName} failed (${res.status}): ${res.body}`);
   }
-  const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    return (await res.json()) as Record<string, unknown>;
+  if (res.contentType.includes("application/json")) {
+    return JSON.parse(res.body) as Record<string, unknown>;
   }
   return {};
 }
@@ -38,8 +73,10 @@ async function waitForApi(baseUrl: string, maxRetries = 30, intervalMs = 10000):
   for (let i = 0; i < maxRetries; i++) {
     try {
       await apiCall(baseUrl, "HealthCheck", { ClientCustomData: "" });
+      console.log(`Satisfactory API is ready (attempt ${i + 1})`);
       return;
-    } catch {
+    } catch (e) {
+      console.log(`waitForApi attempt ${i + 1}/${maxRetries}: ${e instanceof Error ? e.message : e}`);
       if (i === maxRetries - 1) throw new Error("Satisfactory API did not become available");
       await new Promise((r) => setTimeout(r, intervalMs));
     }
