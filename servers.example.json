@@ -11,7 +11,7 @@
       "sshUser": "ubuntu",
       "stopCommand": "sudo systemctl stop satisfactory",
       "startCommand": "sudo systemctl start satisfactory",
-      "securityGroupPorts": [7777, 8888],
+      "securityGroupPorts": [7777, 8888, 15777],
       "rootVolumeSize": 30,
       "postStartHook": "satisfactory",
       "hookConfig": {

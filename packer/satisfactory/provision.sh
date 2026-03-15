@@ -84,11 +84,12 @@ SERVICEEOF
 sudo systemctl daemon-reload
 sudo systemctl enable satisfactory
 
-# --- Engine.ini (Unreal Engine network tuning for AWS) ---
-echo ">>> Creating Engine.ini for network bandwidth optimization..."
-ENGINE_INI_DIR="${STEAM_HOME}/.config/Epic/FactoryGame/Saved/Config/LinuxServer"
-sudo -u "${STEAM_USER}" mkdir -p "${ENGINE_INI_DIR}"
-sudo -u "${STEAM_USER}" tee "${ENGINE_INI_DIR}/Engine.ini" > /dev/null << 'ENGINEEOF'
+# --- Engine.ini / Game.ini (Unreal Engine network tuning for AWS) ---
+echo ">>> Creating Engine.ini and Game.ini for network optimization..."
+CONFIG_DIR="${SATISFACTORY_DIR}/FactoryGame/Saved/Config/LinuxServer"
+sudo -u "${STEAM_USER}" mkdir -p "${CONFIG_DIR}"
+
+sudo -u "${STEAM_USER}" tee "${CONFIG_DIR}/Engine.ini" > /dev/null << 'ENGINEEOF'
 [/Script/Engine.Player]
 ConfiguredInternetSpeed=104857600
 ConfiguredLanSpeed=104857600
@@ -111,6 +112,13 @@ MaxInternetClientRate=104857600
 [URL]
 Port=7777
 ENGINEEOF
+
+sudo -u "${STEAM_USER}" tee "${CONFIG_DIR}/Game.ini" > /dev/null << 'GAMEEOF'
+[/Script/Engine.GameNetworkManager]
+TotalNetBandwidth=104857600
+MaxDynamicBandwidth=104857600
+MinDynamicBandwidth=10485760
+GAMEEOF
 
 # --- Create save data directory ---
 echo ">>> Creating save data directory..."
