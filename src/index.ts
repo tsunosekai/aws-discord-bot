@@ -4,6 +4,15 @@ config();
 import { startBot } from "./discord/bot.js";
 import { startFileServer } from "./file-server.js";
 
+// プロセスクラッシュを防止
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled rejection:", error);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
+});
+
 async function main() {
   console.log("Starting AWS Discord Bot...");
 
