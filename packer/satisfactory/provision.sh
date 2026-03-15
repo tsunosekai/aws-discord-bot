@@ -71,7 +71,6 @@ After=network.target
 Type=simple
 User=steam
 WorkingDirectory=/home/steam/SatisfactoryDedicatedServer
-ExecStartPre=/home/steam/steamcmd/steamcmd.sh +force_install_dir /home/steam/SatisfactoryDedicatedServer +login anonymous +app_update 1690800 +quit
 ExecStart=/home/steam/SatisfactoryDedicatedServer/FactoryServer.sh -unattended -Port=7777
 Restart=on-failure
 RestartSec=10
